@@ -1,0 +1,80 @@
+local NotificationLoad = loadstring(game:HttpGet(('https://raw.githubusercontent.com/treeofplant/Notif/main/library.lua'),true))()
+
+NotificationLoad:NewNotification({
+    ["Mode"] = "Custom",
+    ["Title"] = "Sike Loaded",
+    ["Description"] = "Hello, This is Sike pc version so click Q on your keyboard to camlock on players!",
+    ["Notification_Image"] = "rbxassetid://95419115063852",
+    ["Notification_Sound"] = "rbxassetid://5153734608",
+    ["Timeout"] = 60,
+    ["Audio"] = true
+})
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
+local Mouse = LocalPlayer:GetMouse()
+
+local CamlockState = false
+local Prediction = 0.1457102
+local HorizontalPrediction = 0.16458 -- old sets : 0.15 for horizontal and vertical preds also  i used paid sets dont leak it! old normal preds: 0.11407
+local VerticalPrediction = 0.1422
+local Locked = true
+local Minimized = false
+
+getgenv().Key = "q"
+
+function FindNearestEnemy()
+    local ClosestDistance, ClosestPlayer = math.huge, nil
+    local CenterPosition = Vector2.new(
+        game:GetService("GuiService"):GetScreenResolution().X / 2,
+        game:GetService("GuiService"):GetScreenResolution().Y / 2
+    )
+
+    for _, Player in ipairs(Players:GetPlayers()) do
+        if Player ~= LocalPlayer then
+            local Character = Player.Character
+            if Character and Character:FindFirstChild("HumanoidRootPart") and Character.Humanoid.Health > 0 then
+                local Position, IsVisibleOnViewport = workspace.CurrentCamera:WorldToViewportPoint(Character.HumanoidRootPart.Position)
+
+                if IsVisibleOnViewport then
+                    local Distance = (CenterPosition - Vector2.new(Position.X, Position.Y)).Magnitude
+                    if Distance < ClosestDistance then
+                        ClosestPlayer = Character.HumanoidRootPart
+                        ClosestDistance = Distance
+                    end
+                end
+            end
+        end
+    end
+
+    return ClosestPlayer
+end
+
+local enemy = nil
+
+RunService.Heartbeat:Connect(function()
+    if CamlockState and enemy then
+        local camera = workspace.CurrentCamera
+        local predictedPosition = enemy.Position + Vector3.new(
+            enemy.Velocity.X * HorizontalPrediction,
+            enemy.Velocity.Y * VerticalPrediction,
+            enemy.Velocity.Z * Prediction
+        )
+        camera.CFrame = CFrame.new(camera.CFrame.p, predictedPosition)
+    end
+end)
+
+Mouse.KeyDown:Connect(function(k)
+    if k == getgenv().Key then
+        Locked = not Locked
+        if Locked then
+            enemy = FindNearestEnemy()
+            CamlockState = true
+        else
+            enemy = nil
+            CamlockState = false
+        end
+    end
+end)
